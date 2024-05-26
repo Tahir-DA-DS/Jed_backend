@@ -17,21 +17,28 @@ const checkPaymentStatus = async (payment) => {
   const { rrr } = payment;
   const merchantId = process.env.MERCHANT_ID;
   const apiKey = process.env.API_KEY;
+
+
   const apiHash = CryptoJS.SHA512(rrr + apiKey + merchantId).toString(CryptoJS.enc.Hex);
+  const authorizationHeader = `remitaConsumerKey=${merchantId},remitaConsumerToken=${apiHash}`;
+
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authorizationHeader
+    }
+  };
 
   try {
+
     const response = await axios.get(
       `https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/${merchantId}/${rrr}/${apiHash}/status.reg`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `remitaConsumerKey=${merchantId},remitaConsumerToken=${apiHash}`,
-        },
-      }
+      config
     );
 
     const status = response.data;
-    if (status.message === 'Transaction Pending') {
+
+    if (status.status === '021') { // Handle Transaction Pending
       const updatedPayment = await paymentData.findOneAndUpdate(
         { rrr },
         { paymentStatus: 'Pending' },
@@ -43,7 +50,7 @@ const checkPaymentStatus = async (payment) => {
       }
 
       return updatedPayment;
-    } else if (status.message === 'Transaction Successful') {
+    } else if (status.status === '00') { // Handle Transaction Successful
       const updatedPayment = await paymentData.findOneAndUpdate(
         { rrr },
         { paymentStatus: 'Successful' },
@@ -55,9 +62,20 @@ const checkPaymentStatus = async (payment) => {
       }
 
       return updatedPayment;
+    } else {
+      console.log('Unexpected status:', status);
+      return null;
     }
   } catch (error) {
-    console.error('Error checking payment status:', error.message);
+    if (error.response) {
+      console.error('Error checking payment status:', {
+        responseData: error.response.data,
+        responseCode: error.response.status,
+        responseMsg: error.response.statusText
+      });
+    } else {
+      console.error('Error checking payment status:', error.message);
+    }
     return null;
   }
 };
