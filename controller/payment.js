@@ -57,6 +57,7 @@ const checkPaymentStatus = async (payment) => {
     }
   } catch (error) {
     console.error('Error checking payment status:', error.message);
+    console.log(error)
     return null;
   }
 };
