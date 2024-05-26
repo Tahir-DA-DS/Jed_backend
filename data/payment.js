@@ -8,6 +8,7 @@ const paymentSchema = new mongoose.Schema({
   description: String,
   rrr: String,
   paymentStatus: { type: String, default: 'Pending' },
+  notificationSent: { type: Boolean, default: false },
   date: { type: Date, default: Date.now }
 })
 
