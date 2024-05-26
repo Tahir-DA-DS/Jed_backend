@@ -1,3 +1,4 @@
+require('dotenv').config()
 const paymentData = require('../data/payment');
 const CryptoJS = require('crypto-js');
 const axios = require('axios');
@@ -57,7 +58,6 @@ const checkPaymentStatus = async (payment) => {
     }
   } catch (error) {
     console.error('Error checking payment status:', error.message);
-    console.log(error)
     return null;
   }
 };
