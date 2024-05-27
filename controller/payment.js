@@ -3,6 +3,7 @@ const paymentData = require('../data/payment');
 const CryptoJS = require('crypto-js');
 const axios = require('axios');
 
+
 const savePayments = async (req, res) => {
   const newPayment = new paymentData(req.body);
   try {
@@ -18,7 +19,7 @@ const checkPaymentStatus = async (payment) => {
   const merchantId = process.env.MERCHANT_ID;
   const apiKey = process.env.API_KEY;
 
-
+  console.log(`Payment RRR: ${rrr}`);
   const apiHash = CryptoJS.SHA512(rrr + apiKey + merchantId).toString(CryptoJS.enc.Hex);
   const authorizationHeader = `remitaConsumerKey=${merchantId},remitaConsumerToken=${apiHash}`;
 
@@ -30,27 +31,20 @@ const checkPaymentStatus = async (payment) => {
   };
 
   try {
+    console.log(`Checking status for RRR: ${rrr}`);
+    console.log(`Request URL: https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/${merchantId}/${rrr}/${apiHash}/status.reg`);
+    console.log(`Authorization Header: ${authorizationHeader}`);
 
     const response = await axios.get(
       `https://demo.remita.net/remita/exapp/api/v1/send/api/echannelsvc/${merchantId}/${rrr}/${apiHash}/status.reg`,
       config
     );
 
+    console.log('API Response:', response.data);
+
     const status = response.data;
 
-    if (status.status === '021') { // Handle Transaction Pending
-      const updatedPayment = await paymentData.findOneAndUpdate(
-        { rrr },
-        { paymentStatus: 'Pending' },
-        { new: true }
-      );
-
-      if (!updatedPayment) {
-        throw new Error(`Payment with RRR ${rrr} not found`);
-      }
-
-      return updatedPayment;
-    } else if (status.status === '00') { // Handle Transaction Successful
+    if (status.message === 'Transaction Successful') {
       const updatedPayment = await paymentData.findOneAndUpdate(
         { rrr },
         { paymentStatus: 'Successful' },
@@ -61,9 +55,10 @@ const checkPaymentStatus = async (payment) => {
         throw new Error(`Payment with RRR ${rrr} not found`);
       }
 
+      console.log(`Payment with RRR ${rrr} updated to Successful`);
       return updatedPayment;
     } else {
-      console.log('Unexpected status:', status);
+      console.log(`Transaction status for RRR ${rrr}: ${status.message}`);
       return null;
     }
   } catch (error) {
@@ -79,6 +74,7 @@ const checkPaymentStatus = async (payment) => {
     return null;
   }
 };
+
 
 const sendBatchNotifications = async () => {
   const successfulPayments = await paymentData.find({ paymentStatus: 'Successful', notificationSent: false });
